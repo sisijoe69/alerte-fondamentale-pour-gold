@@ -1,0 +1,11 @@
+services:
+  gold-bot:
+    build: .
+    container_name: gold-fundamental-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - TZ=${TIMEZONE:-Europe/Paris}
+    volumes:
+      - ./logs:/app/logs
