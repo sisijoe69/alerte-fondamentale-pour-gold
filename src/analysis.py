@@ -15,6 +15,7 @@ from .sources import fedwatch as fw_src
 from .sources import fred as fred_src
 from .sources import markets as mk_src
 from .sources import news as news_src
+from .sources import truthsocial as ts_src
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,9 @@ def run_analysis(settings: Settings) -> AnalysisResult:
         "etf": etf_src.fetch_etf_holdings,
         "news": news_src.collect_news,
         "calendar": cal_src.upcoming_events,
+        "truthsocial": lambda: ts_src.fetch_truth_social_posts(
+            account_id=settings.truth_social_account_id
+        ),
     }
 
     results: dict = {}
@@ -46,9 +50,9 @@ def run_analysis(settings: Settings) -> AnalysisResult:
             name = futures[fut]
             try:
                 results[name] = fut.result(timeout=45)
-                logger.info("Source %-9s OK", name)
+                logger.info("Source %-12s OK", name)
             except Exception as exc:  # noqa: BLE001
-                logger.error("Source %-9s FAILED: %s", name, exc)
+                logger.error("Source %-12s FAILED: %s", name, exc)
                 results[name] = {} if name != "calendar" else []
 
     fred = results.get("fred") or {}
@@ -57,7 +61,16 @@ def run_analysis(settings: Settings) -> AnalysisResult:
     fedwatch = results.get("fedwatch") or {}
     etf = results.get("etf") or {}
     news = results.get("news") or {}
+    truthsocial = results.get("truthsocial") or {}
     calendar_events = results.get("calendar") or []
+
+    # Blend Truth Social tilt into the news scoring weights (additively)
+    if truthsocial.get("items"):
+        news.setdefault("bull_hits", 0)
+        news.setdefault("bear_hits", 0)
+        news["bull_hits"] += truthsocial.get("bull_hits", 0)
+        news["bear_hits"] += truthsocial.get("bear_hits", 0)
+        news["truthsocial"] = truthsocial
 
     score = score_all(fred, markets, cot, fedwatch, etf, news)
     report_md = render_report(
@@ -69,6 +82,7 @@ def run_analysis(settings: Settings) -> AnalysisResult:
         news=news,
         calendar_events=calendar_events,
         score=score,
+        truthsocial=truthsocial,
     )
     logger.info(
         "Analysis complete | bias=%s | bull=%d bear=%d",

@@ -82,6 +82,7 @@ def render_report(
     news: dict,
     calendar_events: list,
     score: ScoreResult,
+    truthsocial: dict | None = None,
 ) -> str:
     now = datetime.now()
     price = markets.get("gold_price")
@@ -125,6 +126,14 @@ def render_report(
         for h in top_headlines:
             title = (h.get("title") or "")[:90]
             p(f"  • _{h.get('source')}_ : {title}")
+
+    if truthsocial and truthsocial.get("items"):
+        ts_items = truthsocial["items"][:2]
+        p("")
+        p(f"🦅 *Trump (Truth Social, 24h)* — bull {truthsocial.get('bull_hits',0)} / bear {truthsocial.get('bear_hits',0)}")
+        for ts_item in ts_items:
+            txt = (ts_item.get("text") or "")[:120]
+            p(f"  • {txt}")
     p("")
 
     p("──────────────────────────────────")
