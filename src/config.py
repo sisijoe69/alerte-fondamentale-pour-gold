@@ -79,7 +79,8 @@ def load_settings() -> Settings:
         alerts_enabled=_bool(os.getenv("ALERTS_ENABLED"), default=True),
         alerts_check_time=os.getenv("ALERTS_CHECK_TIME", "14:35").strip() or "14:35",
         webhook_enabled=_bool(os.getenv("WEBHOOK_ENABLED"), default=False),
-        webhook_port=int(os.getenv("WEBHOOK_PORT", "8080")),
+        # Railway / Heroku expose the assigned port via $PORT; honor it first.
+        webhook_port=int(os.getenv("PORT") or os.getenv("WEBHOOK_PORT") or "8080"),
         webhook_secret=(os.getenv("WEBHOOK_SECRET") or "").strip() or None,
         fred_api_key=(os.getenv("FRED_API_KEY") or "").strip() or None,
         truth_social_account_id=(
