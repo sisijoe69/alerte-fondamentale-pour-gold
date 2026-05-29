@@ -128,6 +128,18 @@ def test_webhook_format():
     assert "HAUSSIER" in msg
 
 
+def test_timezone_normalization():
+    from src.config import _normalize_timezone
+
+    assert _normalize_timezone("America/Toronto") == "America/Toronto"
+    # Lowercased user input is auto-corrected
+    assert _normalize_timezone("america/toronto") == "America/Toronto"
+    assert _normalize_timezone("europe/paris") == "Europe/Paris"
+    # Garbage falls back to UTC instead of crashing
+    assert _normalize_timezone("not_a_real_tz") == "UTC"
+    assert _normalize_timezone("") == "UTC"
+
+
 def test_config_missing_token(monkeypatch):
     from src import config
 

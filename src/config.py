@@ -5,11 +5,47 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT_DIR / ".env")
+
+logger = logging.getLogger(__name__)
+
+
+def _normalize_timezone(raw: str) -> str:
+    """Accept user input like 'america/toronto' and return a valid IANA name.
+
+    IANA names are case-sensitive (e.g. 'America/Toronto'). Many users type
+    them in lowercase, which crashes zoneinfo. We try the value as-is, then
+    title-case each '/'-separated segment, then fall back to UTC.
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return "UTC"
+    candidates = [raw]
+    titled = "/".join(s[:1].upper() + s[1:] for s in raw.split("/"))
+    if titled != raw:
+        candidates.append(titled)
+    for candidate in candidates:
+        try:
+            ZoneInfo(candidate)
+            if candidate != raw:
+                logger.warning(
+                    "TIMEZONE %r normalized to %r (IANA names are case-sensitive)",
+                    raw, candidate,
+                )
+            return candidate
+        except ZoneInfoNotFoundError:
+            continue
+    logger.error(
+        "TIMEZONE %r is not a valid IANA timezone — falling back to UTC. "
+        "Examples: America/Toronto, Europe/Paris, Asia/Tokyo",
+        raw,
+    )
+    return "UTC"
 
 
 def _bool(value: str | None, default: bool = False) -> bool:
@@ -75,7 +111,7 @@ def load_settings() -> Settings:
         owner_user_id=_opt_int(os.getenv("OWNER_USER_ID")),
         invite_code=(os.getenv("INVITE_CODE") or "").strip() or None,
         daily_run_time=os.getenv("DAILY_RUN_TIME", "06:00").strip() or "06:00",
-        timezone=os.getenv("TIMEZONE", "Europe/Paris").strip() or "Europe/Paris",
+        timezone=_normalize_timezone(os.getenv("TIMEZONE", "Europe/Paris")),
         alerts_enabled=_bool(os.getenv("ALERTS_ENABLED"), default=True),
         alerts_check_time=os.getenv("ALERTS_CHECK_TIME", "14:35").strip() or "14:35",
         webhook_enabled=_bool(os.getenv("WEBHOOK_ENABLED"), default=False),
