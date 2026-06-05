@@ -167,7 +167,10 @@ async def cmd_subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         provided = args[0] if args else ""
         if provided != settings.invite_code:
             await update.message.reply_text(
-                "🔒 Code d'invitation requis : `/subscribe MONCODE`",
+                "🔒 *Code d'invitation requis.*\n\n"
+                "Tapez la commande ET le code *dans le même message*, séparés par un espace :\n"
+                "`/subscribe LE_CODE_QUE_LE_OWNER_VOUS_A_DONNÉ`\n\n"
+                "_Exemple : si le code est `GOLD2026`, tapez exactement_ `/subscribe GOLD2026`",
                 parse_mode=ParseMode.MARKDOWN,
             )
             return
